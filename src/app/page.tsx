@@ -1,101 +1,123 @@
-import Image from "next/image";
+"use client";
 
-export default function Home() {
+import dynamic from "next/dynamic";
+import { useDashboardState } from "@/hooks/useDashboardState";
+import { StatCard, PositionCard, StatusIndicator } from "@/components/ui/Cards";
+
+const PhaserGame = dynamic(() => import("@/components/phaser/PhaserGame").then((mod) => mod.PhaserGame), {
+  ssr: false,
+  loading: () => <div className="w-full h-full bg-background" />,
+});
+
+export default function OverviewPage() {
+  const { data, loading, error, lastUpdated } = useDashboardState(5000);
+
+  if (loading) {
+    return (
+      <div className="p-6 flex items-center justify-center h-screen">
+        <div className="text-text-muted animate-pulse">Loading dashboard...</div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="p-6 flex items-center justify-center h-screen">
+        <div className="text-accent-red">Error: {error.message}</div>
+      </div>
+    );
+  }
+
   return (
-    <div className="grid grid-rows-[20px_1fr_20px] items-center justify-items-center min-h-screen p-8 pb-20 gap-16 sm:p-20 font-[family-name:var(--font-geist-sans)]">
-      <main className="flex flex-col gap-8 row-start-2 items-center sm:items-start">
-        <Image
-          className="dark:invert"
-          src="https://nextjs.org/icons/next.svg"
-          alt="Next.js logo"
-          width={180}
-          height={38}
-          priority
-        />
-        <ol className="list-inside list-decimal text-sm text-center sm:text-left font-[family-name:var(--font-geist-mono)]">
-          <li className="mb-2">
-            Get started by editing{" "}
-            <code className="bg-black/[.05] dark:bg-white/[.06] px-1 py-0.5 rounded font-semibold">
-              src/app/page.tsx
-            </code>
-            .
-          </li>
-          <li>Save and see your changes instantly.</li>
-        </ol>
+    <div className="relative h-screen overflow-hidden">
+      {/* Phaser Background */}
+      <div className="absolute inset-0 z-0">
+        <PhaserGame className="opacity-50" />
+      </div>
 
-        <div className="flex gap-4 items-center flex-col sm:flex-row">
-          <a
-            className="rounded-full border border-solid border-transparent transition-colors flex items-center justify-center bg-foreground text-background gap-2 hover:bg-[#383838] dark:hover:bg-[#ccc] text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="https://nextjs.org/icons/vercel.svg"
-              alt="Vercel logomark"
-              width={20}
-              height={20}
-            />
-            Deploy now
-          </a>
-          <a
-            className="rounded-full border border-solid border-black/[.08] dark:border-white/[.145] transition-colors flex items-center justify-center hover:bg-[#f2f2f2] dark:hover:bg-[#1a1a1a] hover:border-transparent text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 sm:min-w-44"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Read our docs
-          </a>
+      {/* Content Overlay */}
+      <div className="relative z-10 p-6">
+        {/* Header */}
+        <div className="flex items-center justify-between mb-6">
+          <div>
+            <h1 className="text-2xl font-bold text-text-primary">Money Dashboard</h1>
+            <p className="text-text-muted text-sm">
+              {lastUpdated && `Last updated: ${lastUpdated.toLocaleTimeString()}`}
+            </p>
+          </div>
+          <div className="flex items-center gap-4">
+            <StatusIndicator label="Trading Bot" status={data?.panic_mode ? "red" : "green"} />
+            <StatusIndicator label="API" status="green" />
+          </div>
         </div>
-      </main>
-      <footer className="row-start-3 flex gap-6 flex-wrap items-center justify-center">
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="https://nextjs.org/icons/file.svg"
-            alt="File icon"
-            width={16}
-            height={16}
+
+        {/* Stats Grid */}
+        <div className="grid grid-cols-4 gap-4 mb-6">
+          <StatCard
+            label="Balance"
+            value={`$${data?.balance.toFixed(2) ?? "0"}`}
+            color="green"
+            large
           />
-          Learn
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="https://nextjs.org/icons/window.svg"
-            alt="Window icon"
-            width={16}
-            height={16}
+          <StatCard
+            label="Total PnL"
+            value={`$${data?.pnl.toFixed(2) ?? "0"}`}
+            change={(data?.pnl_pct ?? 0) * 100}
+            color={(data?.pnl ?? 0) >= 0 ? "green" : "red"}
+            large
           />
-          Examples
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="https://nextjs.org/icons/globe.svg"
-            alt="Globe icon"
-            width={16}
-            height={16}
+          <StatCard
+            label="Total Trades"
+            value={data?.total_trades ?? 0}
+            color="blue"
           />
-          Go to nextjs.org →
-        </a>
-      </footer>
+          <StatCard
+            label="Win Rate"
+            value={`${data?.win_rate.toFixed(1) ?? "0"}%`}
+            color="purple"
+          />
+        </div>
+
+        {/* Positions & Trades */}
+        <div className="grid grid-cols-2 gap-6">
+          {/* Open Positions */}
+          <div className="bg-surface/80 backdrop-blur-sm border border-border rounded-lg p-4">
+            <h2 className="text-lg font-bold text-text-primary mb-4">Open Positions</h2>
+            <div className="space-y-3">
+              {data?.positions.map((pos) => (
+                <PositionCard
+                  key={pos.symbol}
+                  symbol={pos.symbol}
+                  quantity={pos.quantity}
+                  entry_price={pos.entry_price}
+                  current_price={pos.current_price}
+                  pnl={pos.pnl}
+                  pnl_pct={pos.pnl_pct * 100}
+                  confidence={pos.confidence}
+                />
+              ))}
+            </div>
+          </div>
+
+          {/* Recent Trades */}
+          <div className="bg-surface/80 backdrop-blur-sm border border-border rounded-lg p-4">
+            <h2 className="text-lg font-bold text-text-primary mb-4">Recent Trades</h2>
+            <div className="space-y-2">
+              {data?.closed_trades.slice(0, 8).map((trade, i) => (
+                <div key={i} className="flex items-center justify-between text-sm">
+                  <div className="flex items-center gap-2">
+                    <span className="font-mono text-text-secondary">{trade.symbol}</span>
+                    <span className="text-text-muted text-xs">{trade.reason}</span>
+                  </div>
+                  <span className={`font-mono ${trade.pnl >= 0 ? "text-accent-green" : "text-accent-red"}`}>
+                    {trade.pnl >= 0 ? "+" : ""}${trade.pnl.toFixed(2)}
+                  </span>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      </div>
     </div>
   );
 }
