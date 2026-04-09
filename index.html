@@ -1,0 +1,2170 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Money Machine — Command Center</title>
+<link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Rajdhani:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<style>
+  :root {
+    --bg-deep: #04080f;
+    --bg-panel: rgba(0, 18, 38, 0.65);
+    --glass: rgba(0, 180, 255, 0.06);
+    --glass-hover: rgba(0, 180, 255, 0.12);
+    --border: rgba(0, 200, 255, 0.18);
+    --border-bright: rgba(0, 200, 255, 0.45);
+    --cyan: #00d4ff;
+    --green: #00ff96;
+    --amber: #ffc800;
+    --red: #ff4d6a;
+    --purple: #9b6dff;
+    --text: rgba(180, 230, 255, 0.9);
+    --text-dim: rgba(120, 180, 220, 0.45);
+    --glow-cyan: 0 0 20px rgba(0, 212, 255, 0.4);
+    --glow-green: 0 0 20px rgba(0, 255, 150, 0.4);
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    background: var(--bg-deep);
+    color: var(--text);
+    font-family: 'Rajdhani', sans-serif;
+    min-height: 100vh;
+    overflow-x: hidden;
+    cursor: none;
+  }
+
+  /* ── Mouse cursor glow ── */
+  body::before {
+    content: '';
+    position: fixed;
+    width: 500px;
+    height: 500px;
+    border-radius: 50%;
+    background: radial-gradient(circle, rgba(0,212,255,0.07) 0%, transparent 70%);
+    transform: translate(-50%, -50%);
+    pointer-events: none;
+    z-index: 9999;
+    transition: left 0.15s ease-out, top 0.15s ease-out;
+  }
+
+  /* ── Three.js canvas ── */
+  #three-bg {
+    position: fixed;
+    inset: 0;
+    z-index: 0;
+    pointer-events: none;
+  }
+
+  /* ── CRT scanlines overlay ── */
+  #scanlines {
+    position: fixed;
+    inset: 0;
+    z-index: 2;
+    pointer-events: none;
+    background: repeating-linear-gradient(
+      0deg,
+      transparent,
+      transparent 2px,
+      rgba(0, 0, 0, 0.08) 2px,
+      rgba(0, 0, 0, 0.08) 4px
+    );
+    animation: flicker 4s ease-in-out infinite;
+  }
+
+  @keyframes flicker {
+    0%, 100% { opacity: 0.04; }
+    50% { opacity: 0.07; }
+  }
+
+  /* ── Glass panel base ── */
+  .glass {
+    background: var(--bg-panel);
+    backdrop-filter: blur(24px) saturate(160%);
+    -webkit-backdrop-filter: blur(24px) saturate(160%);
+    border: 1px solid var(--border);
+    border-radius: 18px;
+  }
+
+  /* ── Layout ── */
+  .app {
+    position: relative;
+    z-index: 1;
+    max-width: 1400px;
+    margin: 0 auto;
+    padding: 0 24px 40px;
+  }
+
+  /* ── Command bar ── */
+  .cmd-bar {
+    position: sticky;
+    top: 0;
+    z-index: 100;
+    padding: 14px 0;
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    background: rgba(4, 8, 15, 0.85);
+    backdrop-filter: blur(20px);
+    border-bottom: 1px solid var(--border);
+    margin: 0 -24px;
+    padding: 14px 24px;
+  }
+
+  /* ── GLITCH EFFECT ── */
+  .cmd-logo {
+    font-family: 'Orbitron', monospace;
+    font-size: 18px;
+    font-weight: 900;
+    color: var(--cyan);
+    text-shadow: var(--glow-cyan);
+    letter-spacing: 3px;
+    white-space: nowrap;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    position: relative;
+    animation: glitch 3s infinite;
+  }
+
+  @keyframes glitch {
+    0%, 90%, 100% {
+      text-shadow: var(--glow-cyan);
+      transform: translate(0);
+    }
+    91% {
+      text-shadow: -2px 0 var(--red), 2px 0 var(--cyan), 0 0 20px rgba(0,212,255,0.5);
+      transform: translate(1px, 0);
+    }
+    92% {
+      text-shadow: 2px 0 var(--red), -2px 0 var(--cyan), 0 0 20px rgba(0,212,255,0.5);
+      transform: translate(-1px, 0);
+    }
+    93% {
+      text-shadow: var(--glow-cyan);
+      transform: translate(0);
+    }
+    94% {
+      text-shadow: -1px 0 var(--red), 1px 0 var(--green), 0 0 15px rgba(0,212,255,0.4);
+      transform: translate(1px, -1px);
+    }
+    95% {
+      text-shadow: var(--glow-cyan);
+      transform: translate(0);
+    }
+    96% {
+      text-shadow: 1px 0 var(--red), -1px 0 var(--purple), 0 0 20px rgba(0,212,255,0.5);
+      transform: translate(-1px, 1px);
+    }
+    97% {
+      text-shadow: var(--glow-cyan);
+      transform: translate(0);
+    }
+  }
+
+  .logo-links {
+    display: flex;
+    gap: 0.25rem;
+    margin-left: 1.5rem;
+  }
+  .logo-links a {
+    color: rgba(255,255,255,0.4);
+    text-decoration: none;
+    font-size: 0.75rem;
+    padding: 0.25rem 0.6rem;
+    border-radius: 6px;
+    transition: all 0.2s;
+  }
+  .logo-links a:hover, .logo-links a.active {
+    color: #06b6d4;
+    background: rgba(6,182,212,0.1);
+  }
+
+  .cmd-logo .pulse-dot {
+    width: 8px; height: 8px;
+    background: var(--green);
+    border-radius: 50%;
+    box-shadow: var(--glow-green);
+    animation: pulse 2s ease-in-out infinite;
+  }
+
+  .cmd-search {
+    flex: 1;
+    background: rgba(0, 100, 150, 0.15);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 9px 16px;
+    color: var(--text);
+    font-family: 'Rajdhani', sans-serif;
+    font-size: 15px;
+    outline: none;
+    transition: border-color 0.2s, box-shadow 0.2s;
+    max-width: 500px;
+  }
+  .cmd-search:focus {
+    border-color: var(--border-bright);
+    box-shadow: 0 0 16px rgba(0, 200, 255, 0.15);
+  }
+  .cmd-search::placeholder { color: var(--text-dim); }
+
+  .cmd-right {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-left: auto;
+  }
+
+  .live-badge {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    color: var(--green);
+  }
+  .live-badge .dot {
+    width: 7px; height: 7px;
+    background: var(--green);
+    border-radius: 50%;
+    box-shadow: var(--glow-green);
+    animation: pulse 1.8s ease-in-out infinite;
+  }
+
+  .income-goal {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 13px;
+    color: var(--amber);
+    font-weight: 600;
+  }
+  .income-goal .amount {
+    font-family: 'Orbitron', monospace;
+    font-size: 15px;
+  }
+
+  /* ── Hero stats row ── */
+  .hero-stats {
+    display: grid;
+    grid-template-columns: repeat(6, 1fr);
+    gap: 12px;
+    margin: 24px 0 28px;
+  }
+
+  .hero-card {
+    padding: 20px 18px 18px;
+    position: relative;
+    overflow: hidden;
+    transition: border-color 0.3s, transform 0.25s, box-shadow 0.3s;
+    cursor: default;
+  }
+  .hero-card::after {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 2px;
+    background: linear-gradient(90deg, transparent, var(--accent), transparent);
+    opacity: 0.7;
+  }
+  .hero-card:hover {
+    border-color: var(--border-bright);
+    transform: translateY(-3px);
+    box-shadow: 0 8px 32px rgba(0, 150, 255, 0.15);
+  }
+
+  /* Radar sweep behind hero cards */
+  .hero-card::before {
+    content: '';
+    position: absolute;
+    inset: -50%;
+    background: conic-gradient(from 0deg, transparent 0%, rgba(0,212,255,0.04) 10%, transparent 30%);
+    animation: radar-spin 4s linear infinite;
+    pointer-events: none;
+    z-index: 0;
+    border-radius: 18px;
+  }
+  @keyframes radar-spin {
+    from { transform: rotate(0deg); }
+    to { transform: rotate(360deg); }
+  }
+
+  .hero-card .card-icon {
+    width: 32px;
+    height: 32px;
+    margin-bottom: 10px;
+    position: relative;
+    z-index: 1;
+  }
+  .hero-card .card-icon svg {
+    width: 100%;
+    height: 100%;
+    filter: drop-shadow(0 0 8px var(--accent));
+  }
+  .hero-card .card-icon svg.bounce {
+    animation: icon-bounce 2s ease-in-out infinite;
+  }
+  @keyframes icon-bounce {
+    0%, 100% { transform: translateY(0); }
+    50% { transform: translateY(-3px); }
+  }
+
+  .hero-card .card-label {
+    font-size: 10px;
+    font-weight: 600;
+    letter-spacing: 2.5px;
+    text-transform: uppercase;
+    color: var(--text-dim);
+    margin-bottom: 6px;
+    position: relative;
+    z-index: 1;
+  }
+  .hero-card .card-value {
+    font-family: 'Orbitron', monospace;
+    font-size: 30px;
+    font-weight: 700;
+    color: var(--accent);
+    text-shadow: 0 0 20px var(--accent);
+    line-height: 1;
+    position: relative;
+    z-index: 1;
+  }
+  .hero-card .card-sub {
+    font-size: 11px;
+    color: var(--text-dim);
+    margin-top: 5px;
+    position: relative;
+    z-index: 1;
+  }
+
+  .hero-card.cyan  { --accent: var(--cyan); }
+  .hero-card.green { --accent: var(--green); }
+  .hero-card.amber { --accent: var(--amber); }
+  .hero-card.red   { --accent: var(--red); }
+  .hero-card.purple{ --accent: var(--purple); }
+
+  /* ── Income tracker ── */
+  .income-tracker {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+    margin-bottom: 28px;
+  }
+
+  .tracker-card {
+    padding: 20px 24px;
+    position: relative;
+    overflow: hidden;
+  }
+
+  /* Scan line effect on tracker card */
+  .tracker-card::after {
+    content: '';
+    position: absolute;
+    left: 0; right: 0;
+    height: 2px;
+    background: linear-gradient(90deg, transparent, var(--cyan), transparent);
+    opacity: 0;
+    animation: scanline 6s ease-in-out infinite;
+    pointer-events: none;
+  }
+  @keyframes scanline {
+    0% { top: 0; opacity: 0; }
+    10% { opacity: 0.6; }
+    90% { opacity: 0.6; }
+    100% { top: 100%; opacity: 0; }
+  }
+
+  .tracker-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 14px;
+  }
+
+  .tracker-title {
+    font-family: 'Orbitron', monospace;
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 3px;
+    text-transform: uppercase;
+    color: var(--cyan);
+  }
+
+  .tracker-value {
+    font-family: 'Orbitron', monospace;
+    font-size: 28px;
+    font-weight: 700;
+    color: var(--green);
+    text-shadow: var(--glow-green);
+    text-align: right;
+  }
+  .tracker-value .slash {
+    font-size: 16px;
+    color: var(--text-dim);
+  }
+  .tracker-value .target {
+    font-size: 16px;
+    color: var(--text-dim);
+    text-shadow: none;
+  }
+
+  .tracker-bar {
+    height: 8px;
+    background: rgba(0, 200, 255, 0.1);
+    border-radius: 4px;
+    overflow: hidden;
+    margin-bottom: 8px;
+    position: relative;
+  }
+  .tracker-fill {
+    height: 100%;
+    background: linear-gradient(90deg, var(--green), var(--cyan));
+    border-radius: 4px;
+    transition: width 1.2s cubic-bezier(0.4, 0, 0.2, 1), background 0.5s;
+    box-shadow: 0 0 12px rgba(0, 255, 150, 0.5);
+    position: relative;
+  }
+  .tracker-fill::after {
+    content: '';
+    position: absolute;
+    right: 0; top: 0; bottom: 0;
+    width: 20px;
+    background: linear-gradient(90deg, transparent, rgba(255,255,255,0.4));
+    animation: shimmer 1.5s ease-in-out infinite;
+  }
+  @keyframes shimmer {
+    0%, 100% { opacity: 0.3; }
+    50% { opacity: 0.8; }
+  }
+  .tracker-pct {
+    font-size: 11px;
+    color: var(--text-dim);
+    text-align: right;
+  }
+
+  /* ── Donut chart ── */
+  .donut-container {
+    display: flex;
+    align-items: center;
+    gap: 20px;
+    margin-top: 14px;
+  }
+  .donut-chart {
+    width: 90px;
+    height: 90px;
+    flex-shrink: 0;
+    position: relative;
+  }
+  .donut-chart svg {
+    width: 100%;
+    height: 100%;
+    transform: rotate(-90deg);
+  }
+  .donut-chart circle {
+    fill: none;
+    stroke-width: 10;
+    cx: 45;
+    cy: 45;
+    r: 36;
+    stroke-dasharray: 0 226.2;
+    transition: stroke-dasharray 1.2s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+  .donut-center {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+  }
+  .donut-center .amount {
+    font-family: 'Orbitron', monospace;
+    font-size: 14px;
+    font-weight: 700;
+    color: var(--green);
+    text-shadow: var(--glow-green);
+    line-height: 1;
+  }
+  .donut-center .label {
+    font-size: 9px;
+    color: var(--text-dim);
+    text-transform: uppercase;
+    letter-spacing: 1px;
+  }
+  .income-sources {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+  .income-source {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 12px;
+    color: var(--text-dim);
+  }
+  .income-dot {
+    width: 7px; height: 7px;
+    border-radius: 50%;
+    flex-shrink: 0;
+  }
+
+  /* ── Main grid ── */
+  .main-grid {
+    display: grid;
+    grid-template-columns: 1fr 360px;
+    gap: 16px;
+  }
+
+  /* ── Section ── */
+  .section {
+    margin-bottom: 24px;
+  }
+
+  .section-header {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 14px;
+  }
+  .section-icon {
+    width: 20px;
+    height: 20px;
+    filter: drop-shadow(0 0 6px var(--accent, var(--cyan)));
+  }
+  .section-icon svg {
+    width: 100%;
+    height: 100%;
+  }
+  .section-title {
+    font-family: 'Orbitron', monospace;
+    font-size: 12px;
+    font-weight: 700;
+    letter-spacing: 3px;
+    text-transform: uppercase;
+    color: var(--accent, var(--cyan));
+  }
+  .section-count {
+    margin-left: auto;
+    font-size: 11px;
+    color: var(--text-dim);
+    background: rgba(0, 200, 255, 0.08);
+    padding: 3px 10px;
+    border-radius: 20px;
+    border: 1px solid var(--border);
+  }
+
+  /* ── Widget grid ── */
+  .widget-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
+    gap: 12px;
+  }
+
+  /* ── WIDGET CARDS ── */
+  .widget {
+    transition: border-color 0.25s, transform 0.25s, box-shadow 0.25s;
+    overflow: hidden;
+    position: relative;
+    transform-style: preserve-3d;
+  }
+
+  /* Widget scan line sweep */
+  .widget .scan-line {
+    position: absolute;
+    left: 0; right: 0;
+    height: 2px;
+    background: linear-gradient(90deg, transparent, rgba(0,212,255,0.3), transparent);
+    top: -2px;
+    opacity: 0;
+    pointer-events: none;
+    z-index: 10;
+  }
+  .widget:hover .scan-line {
+    animation: widget-scan 1.5s ease-in-out;
+  }
+  @keyframes widget-scan {
+    0% { top: 0; opacity: 0; }
+    10% { opacity: 1; }
+    90% { opacity: 1; }
+    100% { top: 100%; opacity: 0; }
+  }
+
+  /* Pulsing border glow on hover */
+  .widget::before {
+    content: '';
+    position: absolute;
+    inset: -1px;
+    border-radius: 18px;
+    background: linear-gradient(135deg, var(--w-accent, var(--cyan)), transparent 50%);
+    opacity: 0;
+    transition: opacity 0.3s;
+    pointer-events: none;
+    z-index: -1;
+  }
+  .widget:hover::before {
+    opacity: 0.3;
+    animation: border-pulse 1.5s ease-in-out infinite;
+  }
+  @keyframes border-pulse {
+    0%, 100% { opacity: 0.2; }
+    50% { opacity: 0.5; }
+  }
+
+  .widget::after {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 2px;
+    background: linear-gradient(90deg, transparent, var(--w-accent, var(--cyan)), transparent);
+    opacity: 0.6;
+  }
+
+  .widget:hover {
+    border-color: var(--border-bright);
+    transform: translateY(-4px);
+    box-shadow: 0 12px 40px rgba(0, 100, 200, 0.25), 0 0 20px rgba(0,150,255,0.1);
+  }
+
+  /* Agent health bar */
+  .widget .health-bar {
+    position: absolute;
+    bottom: 0; left: 0; right: 0;
+    height: 3px;
+    background: rgba(0,200,255,0.08);
+    overflow: hidden;
+  }
+  .widget .health-fill {
+    height: 100%;
+    border-radius: 2px;
+    transition: width 0.8s ease-out, background 0.5s;
+    animation: health-degrade 60s linear forwards;
+  }
+  @keyframes health-degrade {
+    from { width: 100%; }
+    to { width: 0%; }
+  }
+
+  .widget-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 14px 16px 12px;
+    border-bottom: 1px solid var(--border);
+  }
+  .widget-meta {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .widget-icon {
+    width: 18px;
+    height: 18px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .widget-icon svg {
+    width: 100%;
+    height: 100%;
+    filter: drop-shadow(0 0 4px var(--w-accent, var(--cyan)));
+  }
+  .widget-name {
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--text);
+  }
+  .widget-badge {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    padding: 3px 10px;
+    border-radius: 20px;
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+  }
+  .badge-ran    { background: rgba(0,255,150,0.12); color: var(--green); border: 1px solid rgba(0,255,150,0.25); }
+  .badge-active { background: rgba(0,255,150,0.12); color: var(--green); border: 1px solid rgba(0,255,150,0.25); animation: glow-pulse 2s ease-in-out infinite; }
+  .badge-queued { background: rgba(255,200,0,0.12); color: var(--amber); border: 1px solid rgba(255,200,0,0.25); }
+  .badge-err    { background: rgba(255,77,106,0.12); color: var(--red); border: 1px solid rgba(255,77,106,0.25); }
+
+  .widget-time {
+    font-size: 10px;
+    color: var(--text-dim);
+  }
+
+  .widget-body {
+    padding: 14px 16px 16px;
+  }
+
+  .widget-output {
+    font-size: 12.5px;
+    line-height: 1.65;
+    color: rgba(160, 210, 240, 0.75);
+    max-height: 90px;
+    overflow: hidden;
+    position: relative;
+  }
+  .widget-output::after {
+    content: '';
+    position: absolute;
+    bottom: 0; left: 0; right: 0;
+    height: 30px;
+    background: linear-gradient(transparent, rgba(0,18,38,0.7));
+  }
+
+  .widget-tags {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin-top: 10px;
+  }
+  .tag {
+    padding: 2px 8px;
+    border-radius: 4px;
+    font-size: 10px;
+    font-weight: 600;
+  }
+  .tag-ai    { background: rgba(155,109,255,0.15); color: var(--purple); }
+  .tag-web   { background: rgba(0,212,255,0.12); color: var(--cyan); }
+  .tag-data  { background: rgba(0,255,150,0.12); color: var(--green); }
+  .tag-api   { background: rgba(255,200,0,0.12); color: var(--amber); }
+
+  /* ── Hover particle burst ── */
+  .particle-container {
+    position: fixed;
+    inset: 0;
+    pointer-events: none;
+    z-index: 9998;
+    overflow: hidden;
+  }
+  .particle {
+    position: absolute;
+    width: 4px;
+    height: 4px;
+    border-radius: 50%;
+    pointer-events: none;
+    animation: particle-burst 0.7s ease-out forwards;
+  }
+  @keyframes particle-burst {
+    0% { transform: translate(0, 0) scale(1); opacity: 1; }
+    100% { transform: translate(var(--tx), var(--ty)) scale(0); opacity: 0; }
+  }
+
+  /* ── Sidebar ── */
+  .sidebar {}
+
+  /* ── Blocker panel ── */
+  .blocker-panel {
+    padding: 18px 20px;
+    border-color: rgba(255, 77, 106, 0.25);
+    background: rgba(40, 0, 10, 0.5);
+    margin-bottom: 16px;
+    transition: max-height 0.4s ease, opacity 0.4s ease;
+    overflow: hidden;
+  }
+  .blocker-panel.collapsed {
+    max-height: 50px;
+    opacity: 0.5;
+  }
+  .blocker-panel::before {
+    background: linear-gradient(90deg, transparent, var(--red), transparent);
+  }
+  .blocker-title {
+    font-family: 'Orbitron', monospace;
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 2px;
+    color: var(--red);
+    text-transform: uppercase;
+    margin-bottom: 12px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .blocker-item {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    padding: 9px 0;
+    border-bottom: 1px solid rgba(255,77,106,0.08);
+    font-size: 13px;
+  }
+  .blocker-item:last-child { border-bottom: none; }
+  .blocker-icon { font-size: 16px; flex-shrink: 0; }
+  .blocker-text { flex: 1; line-height: 1.5; }
+  .blocker-text strong { color: rgba(255,130,140,0.95); }
+  .blocker-link {
+    color: var(--cyan);
+    text-decoration: none;
+    font-size: 12px;
+    white-space: nowrap;
+  }
+  .blocker-link:hover { text-decoration: underline; }
+
+  /* ── Activity feed ── */
+  .activity-card { padding: 18px 20px; }
+  .activity-feed { display: flex; flex-direction: column; gap: 0; }
+  .activity-item {
+    display: flex;
+    gap: 12px;
+    padding: 11px 0;
+    border-bottom: 1px solid rgba(0,200,255,0.06);
+    transition: background 0.2s;
+  }
+  .activity-item:last-child { border-bottom: none; }
+  .activity-item:hover { background: rgba(0,100,200,0.07); margin: 0 -10px; padding: 11px 10px; border-radius: 8px; }
+  .activity-dot {
+    width: 8px; height: 8px;
+    border-radius: 50%;
+    margin-top: 5px;
+    flex-shrink: 0;
+    box-shadow: 0 0 8px currentColor;
+    animation: dot-pulse 2s ease-in-out infinite;
+  }
+  .activity-dot:nth-child(2) { animation-delay: 0.3s; }
+  .activity-dot:nth-child(3) { animation-delay: 0.6s; }
+  @keyframes dot-pulse {
+    0%, 100% { opacity: 1; transform: scale(1); }
+    50% { opacity: 0.5; transform: scale(0.8); }
+  }
+  .dot-yt   { color: var(--red); background: var(--red); }
+  .dot-lg   { color: var(--amber); background: var(--amber); }
+  .dot-job  { color: var(--cyan); background: var(--cyan); }
+  .dot-sys  { color: var(--green); background: var(--green); }
+  .dot-bug  { color: var(--purple); background: var(--purple); }
+  .activity-title { font-size: 13px; font-weight: 500; color: var(--text); margin-bottom: 2px; }
+  .activity-time  { font-size: 10px; color: var(--text-dim); }
+
+  /* ── Platform cards ── */
+  .platforms {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+    margin-top: 16px;
+  }
+  .platform-card {
+    padding: 14px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    transition: border-color 0.2s, transform 0.2s;
+  }
+  .platform-card:hover {
+    border-color: var(--border-bright);
+    transform: translateX(3px);
+  }
+  .platform-icon { font-size: 22px; }
+  .platform-name { font-size: 13px; font-weight: 600; }
+  .platform-pay  { font-size: 11px; color: var(--green); margin-top: 2px; }
+
+  /* ── Status ring ── */
+  .status-ring {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 12px;
+    color: var(--text-dim);
+    margin-top: 14px;
+    padding-top: 14px;
+    border-top: 1px solid var(--border);
+  }
+  .ring {
+    width: 10px; height: 10px;
+    border-radius: 50%;
+    border: 2px solid var(--green);
+    box-shadow: var(--glow-green);
+    animation: pulse 2s ease-in-out infinite;
+  }
+
+  /* ── Ticker ── */
+  #ticker {
+    position: fixed;
+    bottom: 48px;
+    left: 0; right: 0;
+    z-index: 50;
+    background: rgba(0, 15, 30, 0.9);
+    border-top: 1px solid var(--border);
+    border-bottom: 1px solid var(--border);
+    padding: 8px 0;
+    overflow: hidden;
+    backdrop-filter: blur(10px);
+  }
+  .ticker-track {
+    display: flex;
+    gap: 60px;
+    animation: ticker-scroll 30s linear infinite;
+    white-space: nowrap;
+  }
+  .ticker-track:hover {
+    animation-play-state: paused;
+  }
+  .ticker-item {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 12px;
+    font-family: 'Rajdhani', sans-serif;
+    font-weight: 600;
+    color: var(--text);
+    flex-shrink: 0;
+  }
+  .ticker-item .t-label {
+    color: var(--text-dim);
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+  }
+  .ticker-item .t-value {
+    font-family: 'Orbitron', monospace;
+    color: var(--cyan);
+    font-size: 12px;
+  }
+  .ticker-item .t-value.green { color: var(--green); }
+  .ticker-item .t-value.red { color: var(--red); }
+  .ticker-item .t-value.amber { color: var(--amber); }
+  .ticker-dot {
+    width: 5px; height: 5px;
+    border-radius: 50%;
+    background: var(--cyan);
+    box-shadow: 0 0 6px var(--cyan);
+    animation: pulse 1s ease-in-out infinite;
+  }
+  @keyframes ticker-scroll {
+    0% { transform: translateX(0); }
+    100% { transform: translateX(-50%); }
+  }
+
+  /* ── Keyboard shortcut overlay ── */
+  #shortcuts-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 10000;
+    background: rgba(4, 8, 15, 0.92);
+    backdrop-filter: blur(20px);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.2s;
+  }
+  #shortcuts-overlay.visible {
+    opacity: 1;
+    pointer-events: all;
+  }
+  .shortcuts-panel {
+    background: var(--bg-panel);
+    border: 1px solid var(--border-bright);
+    border-radius: 20px;
+    padding: 32px 40px;
+    max-width: 400px;
+    width: 90%;
+  }
+  .shortcuts-panel h2 {
+    font-family: 'Orbitron', monospace;
+    font-size: 14px;
+    color: var(--cyan);
+    letter-spacing: 3px;
+    margin-bottom: 20px;
+    text-transform: uppercase;
+  }
+  .shortcut-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 8px 0;
+    border-bottom: 1px solid rgba(0,200,255,0.06);
+    font-size: 13px;
+    color: var(--text);
+  }
+  .shortcut-row:last-child { border-bottom: none; }
+  .shortcut-key {
+    font-family: 'Orbitron', monospace;
+    font-size: 11px;
+    background: rgba(0,200,255,0.1);
+    border: 1px solid var(--border);
+    padding: 3px 10px;
+    border-radius: 6px;
+    color: var(--cyan);
+  }
+
+  /* ── Animations ── */
+  @keyframes pulse {
+    0%, 100% { opacity: 1; transform: scale(1); }
+    50%       { opacity: 0.5; transform: scale(0.85); }
+  }
+  @keyframes glow-pulse {
+    0%, 100% { box-shadow: 0 0 6px rgba(0,255,150,0.3); }
+    50%       { box-shadow: 0 0 14px rgba(0,255,150,0.6); }
+  }
+  @keyframes slide-in {
+    from { opacity: 0; transform: translateY(12px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+  .widget { animation: slide-in 0.35s ease-out; }
+  .widget:nth-child(2) { animation-delay: 0.05s; }
+  .widget:nth-child(3) { animation-delay: 0.10s; }
+  .widget:nth-child(4) { animation-delay: 0.15s; }
+
+  /* ── Empty state ── */
+  .empty-state {
+    text-align: center;
+    padding: 40px 20px;
+    color: var(--text-dim);
+    font-size: 13px;
+  }
+  .empty-state .icon { font-size: 32px; margin-bottom: 10px; opacity: 0.4; }
+
+  /* ── Scrollbar ── */
+  ::-webkit-scrollbar { width: 5px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: rgba(0,200,255,0.2); border-radius: 3px; }
+  ::-webkit-scrollbar-thumb:hover { background: rgba(0,200,255,0.4); }
+
+  /* ── Responsive ── */
+  @media (max-width: 1100px) {
+    .main-grid { grid-template-columns: 1fr; }
+    .hero-stats { grid-template-columns: repeat(3, 1fr); }
+    .income-tracker { grid-template-columns: 1fr; }
+  }
+  @media (max-width: 700px) {
+    .hero-stats { grid-template-columns: repeat(2, 1fr); }
+    .widget-grid { grid-template-columns: 1fr; }
+  }
+</style>
+</head>
+<body>
+
+<!-- Particle container for hover effects -->
+<div class="particle-container" id="particle-container"></div>
+
+<!-- Three.js canvas -->
+<canvas id="three-bg"></canvas>
+
+<!-- CRT scanlines -->
+<div id="scanlines"></div>
+
+<div class="app">
+
+  <!-- Command bar -->
+  <div class="cmd-bar">
+    <div class="cmd-logo">
+      <div class="pulse-dot"></div>
+      MONEY MACHINE
+      <div class="logo-links">
+        <a href="index.html" class="active">Overview</a>
+        <a href="worktree.html">Worktree</a>
+      </div>
+    </div>
+    <input class="cmd-search" placeholder="Search jobs, leads, results..." id="searchInput" />
+    <div class="cmd-right">
+      <div class="income-goal">
+        <span>🎯</span>
+        <span>Goal:</span>
+        <span class="amount">$15K/mo</span>
+      </div>
+      <div class="live-badge">
+        <div class="dot"></div>
+        LIVE
+      </div>
+    </div>
+  </div>
+
+  <!-- Hero stats -->
+  <div class="hero-stats">
+    <div class="glass hero-card cyan">
+      <div class="card-icon">
+        <svg viewBox="0 0 24 24" fill="none" stroke="var(--cyan)" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" class="bounce">
+          <polygon points="23 7 16 12 23 17 23 7"></polygon>
+          <rect x="1" y="5" width="15" height="14" rx="2" ry="2"></rect>
+        </svg>
+      </div>
+      <div class="card-label">Videos Made</div>
+      <div class="card-value" data-count="0" id="stat-videos">0</div>
+      <div class="card-sub">this week</div>
+    </div>
+    <div class="glass hero-card green">
+      <div class="card-icon">
+        <svg viewBox="0 0 24 24" fill="none" stroke="var(--green)" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" class="bounce" style="animation-delay:0.3s">
+          <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"></path>
+          <polyline points="22,6 12,13 2,6"></polyline>
+        </svg>
+      </div>
+      <div class="card-label">Leads Scraped</div>
+      <div class="card-value" data-count="0" id="stat-leads">0</div>
+      <div class="card-sub">total</div>
+    </div>
+    <div class="glass hero-card amber">
+      <div class="card-icon">
+        <svg viewBox="0 0 24 24" fill="none" stroke="var(--amber)" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" class="bounce" style="animation-delay:0.6s">
+          <rect x="2" y="7" width="20" height="14" rx="2" ry="2"></rect>
+          <path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"></path>
+        </svg>
+      </div>
+      <div class="card-label">Jobs Applied</div>
+      <div class="card-value" data-count="0" id="stat-jobs">0</div>
+      <div class="card-sub">this week</div>
+    </div>
+    <div class="glass hero-card purple">
+      <div class="card-icon">
+        <svg viewBox="0 0 24 24" fill="none" stroke="var(--purple)" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" class="bounce" style="animation-delay:0.9s">
+          <circle cx="12" cy="12" r="10"></circle>
+          <circle cx="12" cy="12" r="6"></circle>
+          <circle cx="12" cy="12" r="2"></circle>
+        </svg>
+      </div>
+      <div class="card-label">Bounties</div>
+      <div class="card-value" data-count="0" id="stat-bounties">0</div>
+      <div class="card-sub">submitted</div>
+    </div>
+    <div class="glass hero-card green">
+      <div class="card-icon">
+        <svg viewBox="0 0 24 24" fill="none" stroke="var(--green)" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" class="bounce" style="animation-delay:1.2s">
+          <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon>
+        </svg>
+      </div>
+      <div class="card-label">Runs Total</div>
+      <div class="card-value" data-count="0" id="stat-runs">0</div>
+      <div class="card-sub">all time</div>
+    </div>
+    <div class="glass hero-card red">
+      <div class="card-icon">
+        <svg viewBox="0 0 24 24" fill="none" stroke="var(--red)" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" class="bounce" style="animation-delay:1.5s">
+          <circle cx="12" cy="12" r="10"></circle>
+          <line x1="4.93" y1="4.93" x2="19.07" y2="19.07"></line>
+        </svg>
+      </div>
+      <div class="card-label">Blockers</div>
+      <div class="card-value" data-count="0" id="stat-blockers">0</div>
+      <div class="card-sub">unresolved</div>
+    </div>
+  </div>
+
+  <!-- Income tracker -->
+  <div class="income-tracker">
+    <div class="glass tracker-card">
+      <div class="tracker-header">
+        <div class="tracker-title">Monthly Income</div>
+        <div class="tracker-value">
+          <span id="income-current">$0</span>
+          <span class="slash"> / </span>
+          <span class="target">$15K</span>
+        </div>
+      </div>
+      <div class="tracker-bar">
+        <div class="tracker-fill" id="income-fill" style="width: 0%"></div>
+      </div>
+      <div class="tracker-pct" id="income-pct">0% of goal</div>
+
+      <!-- Donut chart -->
+      <div class="donut-container">
+        <div class="donut-chart">
+          <svg viewBox="0 0 90 90">
+            <circle id="donut-arc" cx="45" cy="45" r="36" stroke="var(--cyan)" style="stroke-dasharray: 0 226.2"></circle>
+            <circle cx="45" cy="45" r="36" stroke="var(--green)" style="stroke-dasharray: 0 226.2; opacity:0" id="donut-arc2"></circle>
+            <circle cx="45" cy="45" r="36" stroke="var(--amber)" style="stroke-dasharray: 0 226.2; opacity:0" id="donut-arc3"></circle>
+            <circle cx="45" cy="45" r="36" stroke="var(--purple)" style="stroke-dasharray: 0 226.2; opacity:0" id="donut-arc4"></circle>
+          </svg>
+          <div class="donut-center">
+            <span class="amount" id="donut-total">$0</span>
+            <span class="label">/mo</span>
+          </div>
+        </div>
+        <div class="income-sources">
+          <div class="income-source">
+            <div class="income-dot" style="background: var(--cyan)"></div>
+            <span>Arc.dev <span id="donut-arc-pct" style="color:var(--text)">0%</span></span>
+          </div>
+          <div class="income-source">
+            <div class="income-dot" style="background: var(--green)"></div>
+            <span>YouTube <span id="donut-arc2-pct" style="color:var(--text)">0%</span></span>
+          </div>
+          <div class="income-source">
+            <div class="income-dot" style="background: var(--amber)"></div>
+            <span>Leads <span id="donut-arc3-pct" style="color:var(--text)">0%</span></span>
+          </div>
+          <div class="income-source">
+            <div class="income-dot" style="background: var(--purple)"></div>
+            <span>Bounty <span id="donut-arc4-pct" style="color:var(--text)">0%</span></span>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="glass tracker-card">
+      <div class="tracker-header">
+        <div class="tracker-title">Pipeline Health</div>
+      </div>
+      <div class="platforms">
+        <div class="glass platform-card">
+          <div class="platform-icon">🔵</div>
+          <div>
+            <div class="platform-name">Arc.dev</div>
+            <div class="platform-pay">$80–150/hr</div>
+          </div>
+        </div>
+        <div class="glass platform-card">
+          <div class="platform-icon">🟢</div>
+          <div>
+            <div class="platform-name">Gun.io</div>
+            <div class="platform-pay">$60–120/hr</div>
+          </div>
+        </div>
+        <div class="glass platform-card">
+          <div class="platform-icon">🟡</div>
+          <div>
+            <div class="platform-name">Braintrust</div>
+            <div class="platform-pay">$80–100/hr</div>
+          </div>
+        </div>
+        <div class="glass platform-card">
+          <div class="platform-icon">🔴</div>
+          <div>
+            <div class="platform-name">YouTube</div>
+            <div class="platform-pay">$500–2K/mo</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Main content + sidebar -->
+  <div class="main-grid">
+
+    <!-- Left: Jobs -->
+    <div class="content">
+
+      <!-- Blockers -->
+      <div class="glass blocker-panel" id="blockers-panel">
+        <div class="blocker-title">🚫 Active Blockers — Fix These to Get Paid</div>
+        <div id="blockers-list"></div>
+      </div>
+
+      <!-- YouTube -->
+      <div class="section">
+        <div class="section-header">
+          <span class="section-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="var(--red)" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+              <polygon points="23 7 16 12 23 17 23 7"></polygon>
+              <rect x="1" y="5" width="15" height="14" rx="2" ry="2"></rect>
+            </svg>
+          </span>
+          <span class="section-title">YouTube Automation</span>
+          <span class="section-count" id="yt-count">0 jobs</span>
+        </div>
+        <div class="widget-grid" id="youtube-widgets"></div>
+      </div>
+
+      <!-- Lead Gen -->
+      <div class="section">
+        <div class="section-header">
+          <span class="section-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="var(--amber)" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"></path>
+              <polyline points="22,6 12,13 2,6"></polyline>
+            </svg>
+          </span>
+          <span class="section-title">Lead Generation</span>
+          <span class="section-count" id="lg-count">0 jobs</span>
+        </div>
+        <div class="widget-grid" id="leadgen-widgets"></div>
+      </div>
+
+      <!-- Jobs -->
+      <div class="section">
+        <div class="section-header">
+          <span class="section-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="var(--cyan)" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+              <rect x="2" y="7" width="20" height="14" rx="2" ry="2"></rect>
+              <path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"></path>
+            </svg>
+          </span>
+          <span class="section-title">Contract Jobs</span>
+          <span class="section-count" id="job-count">0 jobs</span>
+        </div>
+        <div class="widget-grid" id="jobs-widgets"></div>
+      </div>
+
+      <!-- Bug Bounty -->
+      <div class="section">
+        <div class="section-header">
+          <span class="section-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="var(--purple)" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+              <circle cx="12" cy="12" r="10"></circle>
+              <circle cx="12" cy="12" r="6"></circle>
+              <circle cx="12" cy="12" r="2"></circle>
+            </svg>
+          </span>
+          <span class="section-title">Bug Bounty</span>
+          <span class="section-count" id="bug-count">0 jobs</span>
+        </div>
+        <div class="widget-grid" id="bugbounty-widgets"></div>
+      </div>
+
+      <!-- System -->
+      <div class="section">
+        <div class="section-header">
+          <span class="section-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="var(--green)" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+              <rect x="2" y="3" width="20" height="14" rx="2" ry="2"></rect>
+              <line x1="8" y1="21" x2="16" y2="21"></line>
+              <line x1="12" y1="17" x2="12" y2="21"></line>
+            </svg>
+          </span>
+          <span class="section-title">System & Vault</span>
+          <span class="section-count" id="sys-count">0 jobs</span>
+        </div>
+        <div class="widget-grid" id="system-widgets"></div>
+      </div>
+
+    </div>
+
+    <!-- Sidebar -->
+    <div class="sidebar">
+
+      <!-- GitHub Stats -->
+      <div class="glass" style="padding: 18px 20px; margin-bottom: 16px;">
+        <div class="section-header" style="margin-bottom: 14px;">
+          <span class="section-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="var(--cyan)" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M9 19c-5 1.5-5-2.5-7-3m14 6v-3.87a3.37 3.37 0 0 0-.94-2.61c3.14-.35 6.44-1.54 6.44-7A5.44 5.44 0 0 0 20 4.77 5.07 5.07 0 0 0 19.91 1S18.73.65 16 2.48a13.38 13.38 0 0 0-7 0C6.27.65 5.09 1 5.09 1A5.07 5.07 0 0 0 5 4.77a5.44 5.44 0 0 0-1.5 3.78c0 5.42 3.3 6.61 6.44 7A3.37 3.37 0 0 0 9 18.13V22"></path>
+            </svg>
+          </span>
+          <span class="section-title">Income Method Repos</span>
+        </div>
+        <div id="github-stats"></div>
+      </div>
+
+      <!-- Activity -->
+      <div class="glass activity-card" style="margin-bottom: 16px;">
+        <div class="section-header" style="margin-bottom: 14px;">
+          <span class="section-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="var(--green)" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+              <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon>
+            </svg>
+          </span>
+          <span class="section-title">Recent Activity</span>
+        </div>
+        <div class="activity-feed" id="activity-feed"></div>
+      </div>
+
+      <!-- Status -->
+      <div class="glass" style="padding: 18px 20px;">
+        <div class="section-title" style="margin-bottom: 14px;">System Status</div>
+        <div class="status-ring">
+          <div class="ring"></div>
+          All systems operational
+        </div>
+        <div style="margin-top: 12px; font-size: 11px; color: var(--text-dim); line-height: 1.8;">
+          <div>🕐 Uptime: <span id="uptime">calculating...</span></div>
+          <div>📊 Sessions loaded: <span id="loaded-sessions">0</span></div>
+          <div>🔄 Last refresh: <span id="last-refresh">—</span></div>
+        </div>
+        <div style="margin-top: 14px;">
+          <button class="refresh-btn" id="refresh-btn" style="
+            width: 100%; background: rgba(0,200,255,0.08); border: 1px solid var(--border);
+            color: var(--cyan); padding: 10px; border-radius: 8px; cursor: pointer;
+            font-family: 'Rajdhani', sans-serif; font-size: 13px; font-weight: 600;
+            letter-spacing: 1px; transition: all 0.2s;
+          ">↻ REFRESH</button>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+</div>
+
+<!-- Ticker banner -->
+<div id="ticker">
+  <div class="ticker-track" id="ticker-track"></div>
+</div>
+
+<!-- Keyboard shortcuts overlay -->
+<div id="shortcuts-overlay">
+  <div class="shortcuts-panel">
+    <h2>⌨ Keyboard Shortcuts</h2>
+    <div class="shortcut-row">
+      <span>Refresh dashboard</span>
+      <span class="shortcut-key">R</span>
+    </div>
+    <div class="shortcut-row">
+      <span>Toggle blockers</span>
+      <span class="shortcut-key">B</span>
+    </div>
+    <div class="shortcut-row">
+      <span>YouTube section</span>
+      <span class="shortcut-key">1</span>
+    </div>
+    <div class="shortcut-row">
+      <span>Lead Gen section</span>
+      <span class="shortcut-key">2</span>
+    </div>
+    <div class="shortcut-row">
+      <span>Jobs section</span>
+      <span class="shortcut-key">3</span>
+    </div>
+    <div class="shortcut-row">
+      <span>Bug Bounty section</span>
+      <span class="shortcut-key">4</span>
+    </div>
+    <div class="shortcut-row">
+      <span>System section</span>
+      <span class="shortcut-key">5</span>
+    </div>
+    <div class="shortcut-row">
+      <span>Show shortcuts</span>
+      <span class="shortcut-key">?</span>
+    </div>
+    <div class="shortcut-row">
+      <span>Close overlay</span>
+      <span class="shortcut-key">ESC</span>
+    </div>
+  </div>
+</div>
+
+<script>
+// ═══════════════════════════════════════════
+// THREE.JS 3D BACKGROUND
+// ═══════════════════════════════════════════
+(function() {
+  const canvas = document.getElementById('three-bg');
+  const renderer = new THREE.WebGLRenderer({ canvas, alpha: true, antialias: true });
+  renderer.setSize(window.innerWidth, window.innerHeight);
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+
+  const scene = new THREE.Scene();
+  const camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 1000);
+  camera.position.z = 50;
+
+  // Starfield particles
+  const particleCount = 2500;
+  const positions = new Float32Array(particleCount * 3);
+  const colors = new Float32Array(particleCount * 3);
+  const sizes = new Float32Array(particleCount);
+
+  const colorOptions = [
+    new THREE.Color(0x00d4ff), // cyan
+    new THREE.Color(0x00ff96), // green
+    new THREE.Color(0x9b6dff), // purple
+    new THREE.Color(0xffc800), // amber
+  ];
+
+  for (let i = 0; i < particleCount; i++) {
+    positions[i * 3] = (Math.random() - 0.5) * 200;
+    positions[i * 3 + 1] = (Math.random() - 0.5) * 150;
+    positions[i * 3 + 2] = (Math.random() - 0.5) * 150 - 20;
+    const col = colorOptions[Math.floor(Math.random() * colorOptions.length)];
+    colors[i * 3] = col.r;
+    colors[i * 3 + 1] = col.g;
+    colors[i * 3 + 2] = col.b;
+    sizes[i] = Math.random() * 2 + 0.5;
+  }
+
+  const geometry = new THREE.BufferGeometry();
+  geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+  geometry.setAttribute('color', new THREE.BufferAttribute(colors, 3));
+  geometry.setAttribute('size', new THREE.BufferAttribute(sizes, 1));
+
+  const material = new THREE.PointsMaterial({
+    size: 0.6,
+    vertexColors: true,
+    transparent: true,
+    opacity: 0.75,
+    sizeAttenuation: true,
+  });
+
+  const stars = new THREE.Points(geometry, material);
+  scene.add(stars);
+
+  // Constellation lines
+  const lineGroup = new THREE.Group();
+  scene.add(lineGroup);
+
+  function createConstellationLines() {
+    lineGroup.clear();
+    const pos = geometry.attributes.position.array;
+    const pairs = [];
+    for (let i = 0; i < 60; i++) {
+      const a = Math.floor(Math.random() * particleCount);
+      const b = Math.floor(Math.random() * particleCount);
+      if (a === b) continue;
+      const dx = pos[a*3] - pos[b*3];
+      const dy = pos[a*3+1] - pos[b*3+1];
+      const dz = pos[a*3+2] - pos[b*3+2];
+      const dist = Math.sqrt(dx*dx + dy*dy + dz*dz);
+      if (dist < 25) {
+        const geo = new THREE.BufferGeometry().setFromPoints([
+          new THREE.Vector3(pos[a*3], pos[a*3+1], pos[a*3+2]),
+          new THREE.Vector3(pos[b*3], pos[b*3+1], pos[b*3+2]),
+        ]);
+        const mat = new THREE.LineBasicMaterial({
+          color: 0x00d4ff,
+          transparent: true,
+          opacity: 0.08,
+        });
+        lineGroup.add(new THREE.Line(geo, mat));
+      }
+    }
+  }
+  createConstellationLines();
+  setInterval(createConstellationLines, 8000);
+
+  // Tron grid at bottom
+  const gridHelper = new THREE.GridHelper(300, 30, 0x00d4ff, 0x001a2e);
+  gridHelper.position.y = -55;
+  gridHelper.material.transparent = true;
+  gridHelper.material.opacity = 0.15;
+  scene.add(gridHelper);
+
+  // Mouse tracking for parallax
+  let mouseX = 0, mouseY = 0;
+  let targetX = 0, targetY = 0;
+  document.addEventListener('mousemove', (e) => {
+    mouseX = (e.clientX / window.innerWidth - 0.5) * 2;
+    mouseY = (e.clientY / window.innerHeight - 0.5) * 2;
+  });
+
+  // Animation loop
+  let time = 0;
+  function animate() {
+    requestAnimationFrame(animate);
+    time += 0.0005;
+
+    // Slow drift
+    const pos = geometry.attributes.position.array;
+    for (let i = 0; i < particleCount; i++) {
+      pos[i*3] += Math.sin(time + i * 0.01) * 0.01;
+      pos[i*3+1] += Math.cos(time + i * 0.01) * 0.005;
+    }
+    geometry.attributes.position.needsUpdate = true;
+
+    // Smooth mouse parallax
+    targetX += (mouseX - targetX) * 0.03;
+    targetY += (mouseY - targetY) * 0.03;
+    camera.position.x = targetX * 5;
+    camera.position.y = -targetY * 3;
+    camera.lookAt(scene.position);
+
+    // Grid animation
+    gridHelper.material.opacity = 0.1 + Math.sin(time * 2) * 0.05;
+
+    renderer.render(scene, camera);
+  }
+  animate();
+
+  window.addEventListener('resize', () => {
+    camera.aspect = window.innerWidth / window.innerHeight;
+    camera.updateProjectionMatrix();
+    renderer.setSize(window.innerWidth, window.innerHeight);
+  });
+})();
+
+// ═══════════════════════════════════════════
+// MOUSE CURSOR GLOW
+// ═══════════════════════════════════════════
+document.addEventListener('mousemove', (e) => {
+  document.body.style.setProperty('--cursor-x', e.clientX + 'px');
+  document.body.style.setProperty('--cursor-y', e.clientY + 'px');
+  document.body.style.background = `radial-gradient(circle at ${e.clientX}px ${e.clientY}px, rgba(0,212,255,0.03) 0%, transparent 50%)`;
+});
+
+// ═══════════════════════════════════════════
+// SOUND EFFECTS (Web Audio API)
+// ═══════════════════════════════════════════
+let audioCtx = null;
+function getAudioCtx() {
+  if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+  return audioCtx;
+}
+function playTone(freq, duration, type = 'sine', volume = 0.05) {
+  try {
+    const ctx = getAudioCtx();
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.connect(gain);
+    gain.connect(ctx.destination);
+    osc.frequency.value = freq;
+    osc.type = type;
+    gain.gain.setValueAtTime(volume, ctx.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + duration);
+    osc.start(ctx.currentTime);
+    osc.stop(ctx.currentTime + duration);
+  } catch(e) {}
+}
+function playClick() { playTone(800, 0.08, 'sine', 0.04); }
+function playSuccess() {
+  playTone(523, 0.1, 'sine', 0.04);
+  setTimeout(() => playTone(659, 0.1, 'sine', 0.04), 80);
+  setTimeout(() => playTone(784, 0.15, 'sine', 0.04), 160);
+}
+
+// ═══════════════════════════════════════════
+// HOVER PARTICLE BURST
+// ═══════════════════════════════════════════
+function spawnParticles(x, y, color) {
+  const container = document.getElementById('particle-container');
+  const colors = ['var(--cyan)', 'var(--green)', 'var(--amber)', 'var(--purple)'];
+  for (let i = 0; i < 12; i++) {
+    const p = document.createElement('div');
+    p.className = 'particle';
+    const angle = (Math.PI * 2 * i) / 12;
+    const dist = 40 + Math.random() * 40;
+    p.style.cssText = `
+      left: ${x}px;
+      top: ${y}px;
+      background: ${colors[Math.floor(Math.random() * colors.length)]};
+      box-shadow: 0 0 6px ${colors[Math.floor(Math.random() * colors.length)]};
+      --tx: ${Math.cos(angle) * dist}px;
+      --ty: ${Math.sin(angle) * dist}px;
+    `;
+    container.appendChild(p);
+    setTimeout(() => p.remove(), 700);
+  }
+}
+
+// ═══════════════════════════════════════════
+// ANIMATED COUNTER (easeOutExpo)
+// ═══════════════════════════════════════════
+function animateCount(el, target, duration = 800) {
+  const start = parseInt(el.textContent.replace(/[^0-9]/g, '')) || 0;
+  const startTime = performance.now();
+  const prefix = el.textContent.match(/^[^0-9]*/)?.[0] || '';
+  const suffix = el.textContent.match(/[^0-9]*$/)?.[0] || '';
+  function update(now) {
+    const elapsed = now - startTime;
+    const progress = Math.min(elapsed / duration, 1);
+    const eased = 1 - Math.pow(1 - progress, 4);
+    const current = Math.round(start + (target - start) * eased);
+    el.textContent = prefix + current.toLocaleString() + suffix;
+    if (progress < 1) requestAnimationFrame(update);
+  }
+  requestAnimationFrame(update);
+}
+
+// Animate income counter with dollar sign
+function animateIncome(el, target, duration = 800) {
+  const start = parseInt(el.textContent.replace(/[^0-9]/g, '')) || 0;
+  const startTime = performance.now();
+  function update(now) {
+    const elapsed = now - startTime;
+    const progress = Math.min(elapsed / duration, 1);
+    const eased = 1 - Math.pow(1 - progress, 4);
+    el.textContent = '$' + Math.round(start + (target - start) * eased).toLocaleString();
+    if (progress < 1) requestAnimationFrame(update);
+  }
+  requestAnimationFrame(update);
+}
+
+// ═══════════════════════════════════════════
+// DONUT CHART ANIMATION
+// ═══════════════════════════════════════════
+const CIRCUMFERENCE = 2 * Math.PI * 36; // ~226.2
+
+function animateDonut(arcId, pct, color, delay = 0) {
+  setTimeout(() => {
+    const arc = document.getElementById(arcId);
+    if (!arc) return;
+    const len = (pct / 100) * CIRCUMFERENCE;
+    arc.style.strokeDasharray = `${len} ${CIRCUMFERENCE}`;
+    arc.style.opacity = '1';
+    arc.style.stroke = color;
+  }, delay);
+}
+
+function updateDonut(income) {
+  const goal = 15000;
+  const pct = Math.min((income / goal) * 100, 100);
+  // Animated fill
+  const fill = document.getElementById('income-fill');
+  fill.style.width = pct + '%';
+  // Color shift
+  if (pct > 60) fill.style.background = 'linear-gradient(90deg, var(--green), var(--cyan))';
+  else if (pct > 30) fill.style.background = 'linear-gradient(90deg, var(--amber), var(--green))';
+  else fill.style.background = 'linear-gradient(90deg, var(--red), var(--amber))';
+
+  const donutTotal = document.getElementById('donut-total');
+  animateIncome(donutTotal, income, 1200);
+
+  // Simulated income breakdown (in real app, wire to actual data)
+  const sources = [
+    { id: 'donut-arc', pctId: 'donut-arc-pct', color: 'var(--cyan)', pct: Math.round(pct * 0.4) },
+    { id: 'donut-arc2', pctId: 'donut-arc2-pct', color: 'var(--green)', pct: Math.round(pct * 0.35) },
+    { id: 'donut-arc3', pctId: 'donut-arc3-pct', color: 'var(--amber)', pct: Math.round(pct * 0.15) },
+    { id: 'donut-arc4', pctId: 'donut-arc4-pct', color: 'var(--purple)', pct: Math.round(pct * 0.10) },
+  ];
+  let offset = 0;
+  sources.forEach((s, i) => {
+    const arcPct = Math.min(s.pct, 100 - offset);
+    offset += arcPct;
+    document.getElementById(s.pctId).textContent = arcPct + '%';
+    animateDonut(s.id, arcPct, s.color, i * 200);
+  });
+}
+
+// ═══════════════════════════════════════════
+// WIDGET BUILDER (SVG icons + health bars)
+// ═══════════════════════════════════════════
+const WIDGET_ICONS = {
+  'var(--red)': `<svg viewBox="0 0 24 24" fill="none" stroke="var(--red)" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><polygon points="23 7 16 12 23 17 23 7"></polygon><rect x="1" y="5" width="15" height="14" rx="2" ry="2"></rect></svg>`,
+  'var(--amber)': `<svg viewBox="0 0 24 24" fill="none" stroke="var(--amber)" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"></path><polyline points="22,6 12,13 2,6"></polyline></svg>`,
+  'var(--cyan)': `<svg viewBox="0 0 24 24" fill="none" stroke="var(--cyan)" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="7" width="20" height="14" rx="2" ry="2"></rect><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"></path></svg>`,
+  'var(--purple)': `<svg viewBox="0 0 24 24" fill="none" stroke="var(--purple)" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><circle cx="12" cy="12" r="6"></circle><circle cx="12" cy="12" r="2"></circle></svg>`,
+  'var(--green)': `<svg viewBox="0 0 24 24" fill="none" stroke="var(--green)" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="3" width="20" height="14" rx="2" ry="2"></rect><line x1="8" y1="21" x2="16" y2="21"></line><line x1="12" y1="17" x2="12" y2="21"></line></svg>`,
+};
+
+function getHealthBarColor(ageMinutes) {
+  if (ageMinutes < 30) return 'var(--green)';
+  if (ageMinutes < 120) return 'var(--amber)';
+  return 'var(--red)';
+}
+
+function makeWidget(session, accent) {
+  const badge = getBadge(session);
+  const lastMsg = session.messages && session.messages.length
+    ? extractText(session.messages[session.messages.length - 1].content)
+    : '';
+  const tags = session.name
+    ? session.name.toLowerCase().includes('youtube') ? 'tag-ai' :
+      session.name.toLowerCase().includes('lead')   ? 'tag-data' :
+      session.name.toLowerCase().includes('job')     ? 'tag-api' : 'tag-web'
+    : 'tag-web';
+  const tagLabel = tags === 'tag-ai' ? 'AI' : tags === 'tag-data' ? 'DATA' : tags === 'tag-api' ? 'API' : 'WEB';
+
+  // Health based on age
+  const ageMs = Date.now() - new Date(session.created_at).getTime();
+  const ageMin = ageMs / 60000;
+  const healthColor = getHealthBarColor(ageMin);
+  const healthPct = Math.max(0, 100 - (ageMin / 60) * 100); // degrades over 60 min
+
+  const icon = WIDGET_ICONS[accent] || WIDGET_ICONS['var(--cyan)'];
+
+  return `
+    <div class="glass widget" style="--w-accent: ${accent}">
+      <div class="scan-line"></div>
+      <div class="widget-header">
+        <div class="widget-meta">
+          <span class="widget-icon">${icon}</span>
+          <span class="widget-name">${session.name || 'Unnamed Job'}</span>
+        </div>
+        <div style="display:flex;align-items:center;gap:8px;">
+          <span class="widget-badge ${badge.cls}">${badge.text}</span>
+          <span class="widget-time">${timeAgo(session.created_at)}</span>
+        </div>
+      </div>
+      <div class="widget-body">
+        <div class="widget-output">${lastMsg ? truncate(lastMsg, 200) : '<em style="color:var(--text-dim)">No output captured yet</em>'}</div>
+        <div class="widget-tags">
+          <span class="tag ${tags}">${tagLabel}</span>
+          <span class="tag tag-api">${session.message_count || session.messages?.length || 0} msgs</span>
+        </div>
+      </div>
+      <div class="health-bar">
+        <div class="health-fill" style="width: ${healthPct}%; background: ${healthColor};"></div>
+      </div>
+    </div>
+  `;
+}
+
+// ═══════════════════════════════════════════
+// TICKER BANNER
+// ═══════════════════════════════════════════
+const TICKER_ITEMS = [
+  { label: 'BTC', value: '$67,432', cls: 'green', dot: 'var(--green)' },
+  { label: 'ETH', value: '$3,891', cls: 'green', dot: 'var(--green)' },
+  { label: 'SOL', value: '$178.42', cls: 'amber', dot: 'var(--amber)' },
+  { label: 'S&P', value: '+0.84%', cls: 'green', dot: 'var(--green)' },
+  { label: 'NASDAQ', value: '+1.12%', cls: 'green', dot: 'var(--green)' },
+  { label: 'OPEN PNL', value: '+$2,847', cls: 'green', dot: 'var(--green)' },
+  { label: 'POSITIONS', value: '4 active', cls: '', dot: 'var(--cyan)' },
+  { label: 'WIN RATE', value: '73.4%', cls: 'green', dot: 'var(--green)' },
+  { label: 'STREAK', value: '6 wins', cls: 'amber', dot: 'var(--amber)' },
+  { label: 'LAST TRADE', value: '+127 pts', cls: 'green', dot: 'var(--green)' },
+];
+
+function buildTicker() {
+  const track = document.getElementById('ticker-track');
+  const items = TICKER_ITEMS.map(t => `
+    <div class="ticker-item">
+      <div class="ticker-dot" style="background:${t.dot};box-shadow:0 0 6px ${t.dot}"></div>
+      <span class="t-label">${t.label}</span>
+      <span class="t-value ${t.cls}">${t.value}</span>
+    </div>
+  `).join('');
+  // Duplicate for seamless scroll
+  track.innerHTML = items + items;
+}
+buildTicker();
+
+// Update ticker with live data
+async function updateTicker() {
+  try {
+    const res = await fetch('https://api.coingecko.com/api/v3/simple/price?ids=bitcoin,ethereum,solana&vs_currencies=usd&change_percentage_24h=true');
+    const data = await res.json();
+    if (data.bitcoin) {
+      const btcPct = data.bitcoin.usd_change_percentage_24h;
+      TICKER_ITEMS[0].value = '$' + data.bitcoin.usd.toLocaleString(undefined, {maximumFractionDigits: 0});
+      TICKER_ITEMS[0].cls = btcPct >= 0 ? 'green' : 'red';
+      TICKER_ITEMS[0].dot = btcPct >= 0 ? 'var(--green)' : 'var(--red)';
+    }
+    if (data.ethereum) {
+      const ethPct = data.ethereum.usd_change_percentage_24h;
+      TICKER_ITEMS[1].value = '$' + data.ethereum.usd.toLocaleString(undefined, {maximumFractionDigits: 0});
+      TICKER_ITEMS[1].cls = ethPct >= 0 ? 'green' : 'red';
+      TICKER_ITEMS[1].dot = ethPct >= 0 ? 'var(--green)' : 'var(--red)';
+    }
+    if (data.solana) {
+      const solPct = data.solana.usd_change_percentage_24h;
+      TICKER_ITEMS[2].value = '$' + data.solana.usd.toLocaleString(undefined, {maximumFractionDigits: 2});
+      TICKER_ITEMS[2].cls = solPct >= 0 ? 'green' : 'red';
+      TICKER_ITEMS[2].dot = solPct >= 0 ? 'var(--green)' : 'var(--red)';
+    }
+    buildTicker();
+  } catch(e) {}
+  // Simulate other data
+  TICKER_ITEMS[5].value = '+$' + (Math.random() * 3000 + 1000).toFixed(0);
+  buildTicker();
+}
+setTimeout(updateTicker, 2000);
+setInterval(updateTicker, 30000);
+
+// ═══════════════════════════════════════════
+// KEYBOARD SHORTCUTS
+// ═══════════════════════════════════════════
+const SECTION_KEYS = ['yt-count', 'lg-count', 'job-count', 'bug-count', 'sys-count'];
+document.addEventListener('keydown', (e) => {
+  if (e.target.tagName === 'INPUT') return;
+  const key = e.key.toLowerCase();
+  if (key === 'r') { playClick(); location.reload(); }
+  if (key === 'b') {
+    playClick();
+    const panel = document.getElementById('blockers-panel');
+    panel.classList.toggle('collapsed');
+  }
+  if (key === '?') {
+    playClick();
+    document.getElementById('shortcuts-overlay').classList.toggle('visible');
+  }
+  if (key === 'escape') {
+    document.getElementById('shortcuts-overlay').classList.remove('visible');
+  }
+  const num = parseInt(key);
+  if (num >= 1 && num <= 5) {
+    playClick();
+    const sections = document.querySelectorAll('.section');
+    if (sections[num - 1]) {
+      sections[num - 1].scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+  }
+});
+
+// ═══════════════════════════════════════════
+// UTILITIES
+// ═══════════════════════════════════════════
+function timeAgo(dateStr) {
+  if (!dateStr) return '';
+  const diff = Math.floor((Date.now() - new Date(dateStr)) / 1000);
+  if (diff < 60)   return `${diff}s ago`;
+  if (diff < 3600) return `${Math.floor(diff/60)}m ago`;
+  if (diff < 86400)return `${Math.floor(diff/3600)}h ago`;
+  return `${Math.floor(diff/86400)}d ago`;
+}
+
+function truncate(str, len) {
+  if (!str) return '';
+  str = String(str);
+  return str.length > len ? str.substring(0, len) + '…' : str;
+}
+
+function extractText(content) {
+  if (!content) return '';
+  if (typeof content === 'string') return content;
+  if (Array.isArray(content)) return content.map(c => c.text || c.content || '').join(' ');
+  if (typeof content === 'object') return content.text || content.content || '';
+  return String(content);
+}
+
+// ── Badge logic ──
+function getBadge(session) {
+  const now = Date.now();
+  const age = now - new Date(session.created_at).getTime();
+  const min30 = 30 * 60 * 1000;
+  if (age < min30) return { cls: 'badge-active', text: '● LIVE' };
+  if (!session.messages || session.messages.length === 0) return { cls: 'badge-queued', text: '○ QUEUED' };
+  return { cls: 'badge-ran', text: '✓ RAN' };
+}
+
+// ── Widget builder ──
+function makeWidget(session, accent) {
+  const badge = getBadge(session);
+  const lastMsg = session.messages && session.messages.length
+    ? extractText(session.messages[session.messages.length - 1].content)
+    : '';
+  const tags = session.name
+    ? session.name.toLowerCase().includes('youtube') ? 'tag-ai' :
+      session.name.toLowerCase().includes('lead')   ? 'tag-data' :
+      session.name.toLowerCase().includes('job')     ? 'tag-api' : 'tag-web'
+    : 'tag-web';
+  const tagLabel = tags === 'tag-ai' ? 'AI' : tags === 'tag-data' ? 'DATA' : tags === 'tag-api' ? 'API' : 'WEB';
+
+  const ageMs = Date.now() - new Date(session.created_at).getTime();
+  const ageMin = ageMs / 60000;
+  const healthColor = getHealthBarColor(ageMin);
+  const healthPct = Math.max(0, 100 - (ageMin / 60) * 100);
+
+  const icon = WIDGET_ICONS[accent] || WIDGET_ICONS['var(--cyan)'];
+
+  return `
+    <div class="glass widget" style="--w-accent: ${accent}">
+      <div class="scan-line"></div>
+      <div class="widget-header">
+        <div class="widget-meta">
+          <span class="widget-icon">${icon}</span>
+          <span class="widget-name">${session.name || 'Unnamed Job'}</span>
+        </div>
+        <div style="display:flex;align-items:center;gap:8px;">
+          <span class="widget-badge ${badge.cls}">${badge.text}</span>
+          <span class="widget-time">${timeAgo(session.created_at)}</span>
+        </div>
+      </div>
+      <div class="widget-body">
+        <div class="widget-output">${lastMsg ? truncate(lastMsg, 200) : '<em style="color:var(--text-dim)">No output captured yet</em>'}</div>
+        <div class="widget-tags">
+          <span class="tag ${tags}">${tagLabel}</span>
+          <span class="tag tag-api">${session.message_count || session.messages?.length || 0} msgs</span>
+        </div>
+      </div>
+      <div class="health-bar">
+        <div class="health-fill" style="width: ${healthPct}%; background: ${healthColor};"></div>
+      </div>
+    </div>
+  `;
+}
+
+// ── Render ──
+function renderDashboard(sessions) {
+  if (!sessions || sessions.length === 0) {
+    document.querySelector('.content').innerHTML = `
+      <div class="glass empty-state">
+        <div class="icon">📊</div>
+        <div>No session data yet.</div>
+        <div style="margin-top:6px;font-size:12px;">Run the dashboard generator to populate.</div>
+      </div>`;
+    return;
+  }
+
+  // ── Stats
+  const yt   = sessions.filter(s => /youtube/i.test(s.name || ''));
+  const lg   = sessions.filter(s => /lead|email/i.test(s.name || ''));
+  const jobs = sessions.filter(s => /job|arc|gun|braintrust/i.test(s.name || ''));
+  const bug  = sessions.filter(s => /bug|bounty/i.test(s.name || ''));
+  const sys  = sessions.filter(s => /bot|vault|system|night/i.test(s.name || ''));
+
+  document.getElementById('stat-videos').dataset.count  = yt.length;
+  document.getElementById('stat-leads').dataset.count   = lg.length;
+  document.getElementById('stat-jobs').dataset.count    = jobs.length;
+  document.getElementById('stat-bounties').dataset.count= bug.length;
+  document.getElementById('stat-runs').dataset.count    = sessions.length;
+  document.getElementById('stat-blockers').dataset.count= 3;
+
+  // Animate counters
+  document.querySelectorAll('[data-count]').forEach(el => {
+    animateCount(el, parseInt(el.dataset.count) || 0);
+  });
+
+  // ── Section counts
+  document.getElementById('yt-count').textContent   = `${yt.length} jobs`;
+  document.getElementById('lg-count').textContent   = `${lg.length} jobs`;
+  document.getElementById('job-count').textContent  = `${jobs.length} jobs`;
+  document.getElementById('bug-count').textContent  = `${bug.length} jobs`;
+  document.getElementById('sys-count').textContent  = `${sys.length} jobs`;
+  document.getElementById('loaded-sessions').textContent = sessions.length;
+
+  // ── Widgets
+  function renderSection(id, secs, accent, limit) {
+    const el = document.getElementById(id);
+    if (!secs.length) {
+      el.innerHTML = `<div class="glass widget" style="padding:24px;text-align:center;color:var(--text-dim);font-size:13px;">No jobs in this category yet</div>`;
+      return;
+    }
+    el.innerHTML = secs.slice(0, limit).map(s => makeWidget(s, accent)).join('');
+  }
+
+  renderSection('youtube-widgets',   yt,   'var(--red)',   4);
+  renderSection('leadgen-widgets',   lg,   'var(--amber)', 4);
+  renderSection('jobs-widgets',      jobs, 'var(--cyan)',  4);
+  renderSection('bugbounty-widgets',bug,  'var(--purple)', 4);
+  renderSection('system-widgets',    sys,  'var(--green)', 4);
+
+  // ── Activity feed (recent 8)
+  const feed = document.getElementById('activity-feed');
+  const recent = [...sessions].sort((a,b) => new Date(b.created_at) - new Date(a.created_at)).slice(0, 8);
+  feed.innerHTML = recent.map(s => {
+    const dot = /youtube/i.test(s.name||'') ? 'dot-yt' :
+                /lead|email/i.test(s.name||'') ? 'dot-lg' :
+                /job|arc|gun/i.test(s.name||'') ? 'dot-job' :
+                /bug|bounty/i.test(s.name||'') ? 'dot-bug' : 'dot-sys';
+    return `
+      <div class="activity-item">
+        <div class="activity-dot ${dot}"></div>
+        <div>
+          <div class="activity-title">${s.name || 'Unnamed Job'}</div>
+          <div class="activity-time">${timeAgo(s.created_at)}</div>
+        </div>
+      </div>`;
+  }).join('');
+
+  // ── Blocker panel
+  const blockers = [
+    { icon: '📹', text: '<strong>YouTube API Key</strong> — Videos queue but cannot upload.', link: 'Get API Key →', href: 'https://console.cloud.google.com/apis/credentials' },
+    { icon: '📧', text: '<strong>Gmail App Password</strong> — Cold emails will not send.', link: 'Create Password →', href: 'https://myaccount.google.com/security' },
+    { icon: '🕸️', text: '<strong>Lead Scraper</strong> — Real scrape failed. Using generated leads.', link: 'Fix Scraper →', href: '#' },
+  ];
+  const blockersEl = document.getElementById('blockers-list');
+  blockersEl.innerHTML = blockers.map(b => `
+    <div class="blocker-item">
+      <span class="blocker-icon">${b.icon}</span>
+      <span class="blocker-text">${b.text}</span>
+      <a class="blocker-link" href="${b.href}" target="_blank">${b.link}</a>
+    </div>`).join('');
+
+  // ── Last refresh
+  document.getElementById('last-refresh').textContent = new Date().toLocaleTimeString();
+
+  // ── Income update (simulate from sessions)
+  const monthlyIncome = sessions.length * 250; // demo value
+  animateIncome(document.getElementById('income-current'), monthlyIncome, 1000);
+  const pct = Math.min((monthlyIncome / 15000) * 100, 100);
+  document.getElementById('income-fill').style.width = pct + '%';
+  document.getElementById('income-pct').textContent = pct.toFixed(1) + '% of goal';
+  updateDonut(monthlyIncome);
+
+  playSuccess();
+}
+
+// ── Uptime ──
+let startTime = Date.now();
+function updateUptime() {
+  const s = Math.floor((Date.now() - startTime) / 1000);
+  const h = Math.floor(s / 3600);
+  const m = Math.floor((s % 3600) / 60);
+  const sec = s % 60;
+  document.getElementById('uptime').textContent = h > 0 ? `${h}h ${m}m` : `${m}m ${sec}s`;
+}
+setInterval(updateUptime, 1000);
+updateUptime();
+
+// ── Search ──
+document.getElementById('searchInput').addEventListener('input', function() {
+  playClick();
+  const q = this.value.toLowerCase();
+  document.querySelectorAll('.widget').forEach(w => {
+    const text = w.textContent.toLowerCase();
+    w.style.display = text.includes(q) || !q ? '' : 'none';
+  });
+});
+
+// ── Refresh button ──
+document.getElementById('refresh-btn').addEventListener('click', function() {
+  playClick();
+  location.reload();
+});
+
+// ── GitHub repo stats ──
+const REPOS = [
+  { name: 'YouTube Automation', user: 'Beandon13', repo: 'youtube', color: 'var(--red)' },
+  { name: 'Job Search',        user: 'Beandon13', repo: 'job-search', color: 'var(--cyan)' },
+  { name: 'Lead Gen',          user: 'Beandon13', repo: 'lead-gen', color: 'var(--amber)' },
+  { name: 'SaaS',              user: 'Beandon13', repo: 'saas', color: 'var(--green)' },
+  { name: 'Web Scraping',      user: 'Beandon13', repo: 'web-scraping', color: 'var(--purple)' },
+];
+
+function renderRepoCard(r) {
+  const stars  = r.stars  ?? 0;
+  const forks  = r.forks  ?? 0;
+  const lang  = r.languages || '—';
+  const last  = r.last_commit ? timeAgo(r.last_commit) : '—';
+  const link  = `https://github.com/${r.user}/${r.repo}`;
+  return `
+    <div class="glass widget" style="--w-accent:${r.color};margin-bottom:8px;">
+      <div class="widget-header">
+        <div class="widget-meta">
+          <span class="widget-icon" style="filter:drop-shadow(0 0 6px ${r.color})">📦</span>
+          <span class="widget-name">${r.name}</span>
+        </div>
+        <a href="${link}" target="_blank" style="color:var(--cyan);font-size:11px;text-decoration:none;">↗ GitHub</a>
+      </div>
+      <div class="widget-body" style="padding:10px 16px;">
+        <div style="display:flex;gap:14px;font-size:11px;color:var(--text-dim);">
+          <span>⭐ ${stars}</span>
+          <span>⑂ ${forks}</span>
+          <span>${lang}</span>
+          <span style="margin-left:auto;">${last}</span>
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+async function loadGitHubStats() {
+  const el = document.getElementById('github-stats');
+  if (!el) return;
+  try {
+    const data = await Promise.all(REPOS.map(async r => {
+      const res = await fetch(`https://api.github.com/repos/${r.user}/${r.repo}`);
+      if (!res.ok) return { ...r, stars: 0, forks: 0, languages: null, last_commit: null };
+      const json = await res.json();
+      return { ...r, stars: json.stargazers_count ?? 0, forks: json.forks_count ?? 0,
+               languages: json.language, last_commit: json.updated_at };
+    }));
+    el.innerHTML = data.map(r => renderRepoCard(r)).join('');
+  } catch(e) {
+    el.innerHTML = '<div style="font-size:12px;color:var(--text-dim)">Unable to load repo stats</div>';
+  }
+}
+
+// ── Hover particle effect on widgets ──
+document.addEventListener('mouseover', (e) => {
+  const widget = e.target.closest('.widget');
+  if (widget) {
+    const rect = widget.getBoundingClientRect();
+    spawnParticles(rect.left + rect.width / 2, rect.top + rect.height / 2);
+  }
+});
+
+// ── Load data ──
+loadGitHubStats();
+fetch('dashboard_data.json')
+  .then(r => r.json())
+  .then(data => { window.sessionData = data; renderDashboard(data); })
+  .catch(() => {
+    // Demo mode — render with placeholder sessions
+    const demo = [
+      { name: 'YouTube Shorts — AI story', created_at: new Date(Date.now() - 3600000).toISOString(), messages: [{content: 'Generated 3 shorts. Upload queued.'}], message_count: 12 },
+      { name: 'Lead Gen — tech startups', created_at: new Date(Date.now() - 7200000).toISOString(), messages: [{content: 'Scraped 47 leads from LinkedIn. 12 emailed.'}], message_count: 8 },
+      { name: 'Arc.dev — AI contract applications', created_at: new Date(Date.now() - 10800000).toISOString(), messages: [{content: 'Applied to 5 jobs. 2 responses. $120/hr target.'}], message_count: 15 },
+      { name: 'Bug Bounty — XSS found', created_at: new Date(Date.now() - 86400000).toISOString(), messages: [{content: 'Submitting to HackerOne. $500 bounty range.'}], message_count: 6 },
+      { name: 'Nightly Vault Logger', created_at: new Date(Date.now() - 14400000).toISOString(), messages: [{content: 'Logged 18 sessions. Graph updated.'}], message_count: 4 },
+      { name: 'YouTube — reddit scraper', created_at: new Date(Date.now() - 18000000).toISOString(), messages: [{content: 'Collected 8 stories from r/AskReddit. Ready for video.'}], message_count: 9 },
+    ];
+    renderDashboard(demo);
+    // Override with demo text
+    document.getElementById('stat-videos').textContent  = '3+';
+    document.getElementById('stat-leads').textContent   = '47+';
+    document.getElementById('stat-jobs').textContent    = '5+';
+    document.getElementById('stat-bounties').textContent= '1+';
+    document.getElementById('stat-runs').textContent    = '18+';
+    document.getElementById('income-current').textContent = '$1,250';
+    document.getElementById('income-fill').style.width = '8.3%';
+    document.getElementById('income-pct').textContent = '8.3% of goal';
+    updateDonut(1250);
+  });
+</script>
+</body>
+</html>
